@@ -1,0 +1,91 @@
+---
+title: "machlearn_assignment"
+author: "Bauke Visser"
+date: "Monday, June 13, 2015"
+output: html_document
+---
+## Machine Learning assignment: Predicting manner of exercise
+
+### Executive summary:
+This project aims to use machine learning to indicate if a person is doing
+an excercise in a certain manner (right/wrong) by combining measurements
+from a number of sensors on the persons body.
+The study shows that this indication can be given in a very accurate way
+The data for this exercise come from this source: 
+http://groupware.les.inf.puc-rio.br/har.
+
+### Loading data
+```{r, echo=TRUE}
+library(caret)
+set.seed(1)
+setwd("C:/DATA/prive/R_Coursera/08 Machine Learning")
+train<-read.csv("pml-training.csv", header=T)
+test<-read.csv("pml-testing.csv", header=T)
+```
+
+### Exploring the data
+```{r, echo=TRUE}
+t<-68
+plot(train$raw_timestamp_part_2,train[,t],col=train$classe) 
+t<-t+1
+```
+In this plot, the colors represent a manner of exercise. As you can see, values of a certain measurement are connected to the manner of execise. This indicates that there is a fair chance that the manner of exercise can be derived from the sensor-measurements. 
+I added the 3rd line so you can run the 2nd and 3d repeatedly to see more plots of different variables.
+
+### Data preprocessing
+A number of actions will be done in order to get a good dataset to train a model
+1 - delete variables (columns) from the training set with a low variance
+2 - delete variables from the training set that have low variance in the testset
+3 - delete some columns that are expected not to contribute significantly to the model
+4 - subset a pre-testset within the training set in order to estimate an out sample error
+```{r, echo=TRUE}
+nsv<-nearZeroVar(train,saveMetrics=TRUE)
+sel<-nsv[nsv$nzv=="FALSE",]
+train1<-train[,rownames(sel)]
+test1<-test[,rownames(sel[-100,])]#exclude column "problem_id"
+train2<-train1[,-c(2,5)]
+test2<-test1[,-c(2,5)]
+
+nsv1<-nearZeroVar(test2,saveMetrics=TRUE)
+sel1<-nsv1[nsv1$nzv=="FALSE",]
+test3<-test2[,rownames(sel1)]
+train3<-train2[,rownames(sel1)]
+train3$classe<-train$classe
+train4<-train3[,-c(1,2,3,4)]
+test4<-test3[,-c(1,2,3,4)]
+
+inTrain = createDataPartition(train4$classe, p = 1/2)[[1]]
+train5 = train4[ inTrain,]
+train6 = train4[ -inTrain,]
+```
+
+### Training the model
+During the preparations phase, a number of model types have been tested (gbm, svmradial, lvq) and numerous ways of tuning (control <- trainControl(method="repeatedcv", number=10, repeats=3)). In the end, gbm was chosen because it gives highest accuracy. Tuning can be applied but I chose not to because of speed reasons. The part below takes approx 20 minutes on a 8GB, i7 machine.
+```{r, echo=TRUE, results="hide"}
+modgbm<-train(classe~.,data=train5,method="gbm")
+```
+```{r, echo=TRUE}
+modgbm
+```
+
+### Estimating out of sample-error with cross validation
+The code below delivers a confusion matrix over the second part of the training data (train6)
+I delivers a confusion matrix and the accuracy over the out-of-sample dataset.
+The out of sample error is 100% minus the accuracy so approximately 100%-96,1%=5.9%
+```{r, echo=TRUE}
+output<-predict(modgbm,train6[,!names(train6) %in% "classe"])
+cm<-confusionMatrix(data=output, reference=train6[,"classe"], positive = NULL, dnn = c("Prediction", "Reference"), prevalence = NULL)
+cm$table
+cm$overall
+```
+
+### Predicting the testset
+```{r, echo=TRUE}
+output<-predict(modgbm,test4)
+output
+```
+
+### Interpretation and conclusion
+Machine Learning seems to be an effective way to indicate the manner of exercise,
+based on sensor data. Although there is still room for improvement, the procedure as described
+above, produces a very effective model with fairly accurate output.
