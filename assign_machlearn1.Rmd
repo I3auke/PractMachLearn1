@@ -26,11 +26,15 @@ test<-read.csv("pml-testing.csv", header=T)
 ### Exploring the data
 ```{r, echo=TRUE}
 t<-68
-plot(train$raw_timestamp_part_2,train[,t],col=train$classe) 
-t<-t+1
+par(mfrow=c(1,2))
+plot(train$raw_timestamp_part_2,train[,t],col=train$classe,ylab=colnames(train)[t]) 
+legend("topright", legend=levels(factor(train$classe)), text.col=seq_along(levels(factor(train$classe))),title="classe")
+plot(train$raw_timestamp_part_2,train[,t-1],col=train$classe,ylab=colnames(train)[t-1]) 
+legend("topright", legend=levels(factor(train$classe)), text.col=seq_along(levels(factor(train$classe))),title="classe")
+t<-t-1
 ```
 In this plot, the colors represent a manner of exercise. As you can see, values of a certain measurement are connected to the manner of execise. This indicates that there is a fair chance that the manner of exercise can be derived from the sensor-measurements. 
-I added the 3rd line so you can run the 2nd and 3d repeatedly to see more plots of different variables.
+I added the last line so you can run the last six lines repeatedly to see more plots of different variables.
 
 ### Data preprocessing
 A number of actions will be done in order to get a good dataset to train a model
